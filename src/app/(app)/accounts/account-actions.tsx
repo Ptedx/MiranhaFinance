@@ -232,22 +232,24 @@ function ViewTransactionsDialog({ open, setOpen, account }: { open: boolean; set
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] overflow-hidden p-4 sm:p-6 flex flex-col">
         <DialogHeader>
           <DialogTitle>Transactions — {account.name}</DialogTitle>
           <DialogDescription>Read-only preview with filters.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-          <Input type="date" lang="pt-BR" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-40" aria-label="Start date" />
-          <Input type="date" lang="pt-BR" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-40" aria-label="End date" />
-            <Button variant="outline" size="sm" onClick={clearFilters}>Clear</Button>
+        <div className="space-y-2 flex-1 overflow-visible px-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <Input type="date" lang="pt-BR" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full" aria-label="Start date" />
+            <Input type="date" lang="pt-BR" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full" aria-label="End date" />
+            <div className="flex sm:justify-end">
+              <Button variant="outline" size="sm" onClick={clearFilters} className="w-full sm:w-auto">Clear</Button>
+            </div>
           </div>
           <Input placeholder="Search transactions..." value={q} onChange={(e) => setQ(e.target.value)} className="w-full" />
         </div>
 
-        <div className="rounded-md border mt-3 overflow-hidden">
+        <div className="rounded-md border mt-3 overflow-auto max-h-[50vh] sm:max-h-[60vh]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -291,7 +293,7 @@ function ViewTransactionsDialog({ open, setOpen, account }: { open: boolean; set
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-3 border-t pt-3">
           <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
           <Button onClick={() => router.push(`/transactions?accountId=${account.id}`)}>Go to Transactions</Button>
         </DialogFooter>
