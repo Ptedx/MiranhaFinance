@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AddTransactionButton } from "./add-transaction";
+import { ImportStatementDialog } from "./import-statement-dialog";
 import { TxnActions } from "./txn-actions";
 import { toast } from "sonner";
 
@@ -98,12 +99,7 @@ export default function TransactionsPage() {
               <Button variant="outline" size="sm" onClick={clearFilters} aria-label="Clear filters">Clear</Button>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" asChild>
-                <label className="cursor-pointer">
-                  <input type="file" accept=".csv" className="hidden" />
-                  Import CSV
-                </label>
-              </Button>
+              <ImportStatementDialog onImported={() => load(true)} />
               <AddTransactionButton accountId={accountId} onAdded={() => load(true)} />
             </div>
           </div>
