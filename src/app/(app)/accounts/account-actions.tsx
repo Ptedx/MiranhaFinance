@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { MoreVertical } from "lucide-react";
 
 type Account = {
@@ -171,40 +172,125 @@ function EditAccountDialog({ open, setOpen, account, onUpdated }: { open: boolea
 
 function ViewTransactionsDialog({ open, setOpen, account }: { open: boolean; setOpen: (v: boolean) => void; account: Account }) {
   const router = useRouter();
-  const mock = [
-    { date: "2025-01-02", description: "Grocery Store", amount: -65.32 },
-    { date: "2025-01-03", description: "Salary", amount: 3200.0 },
-    { date: "2025-01-05", description: "Electric Bill", amount: -120.45 },
-    { date: "2025-01-08", description: "Coffee Shop", amount: -4.9 },
-    { date: "2025-01-10", description: "Transfer", amount: -250.0 },
-  ];
+  const [q, setQ] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [rows, setRows] = useState<Array<{ id: string; date: string; description: string; amount: number; currency: string; status: "PENDING" | "POSTED" }>>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [totalSum, setTotalSum] = useState(0);
+
+  async function load(reset = false) {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.set("page", String(reset ? 1 : page));
+      params.set("pageSize", "10");
+      params.set("accountId", account.id);
+      if (q) params.set("q", q);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      const res = await fetch(`/api/transactions?${params.toString()}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load");
+      setRows((prev) => (reset ? json.data : [...prev, ...json.data]));
+      setHasMore(json.meta?.hasMore);
+      setTotalSum(json.meta?.totalSum ?? 0);
+    } catch (e) {
+      // swallow for dialog UX; optional toast
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function clearFilters() {
+    setQ("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  }
+
+  // effects
+  useEffect(() => {
+    if (open) load(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setPage(1);
+    load(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (page > 1) load(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Transactions — {account.name}</DialogTitle>
-          <DialogDescription>Preview only. Full transactions experience will arrive soon.</DialogDescription>
+          <DialogDescription>Read-only preview with filters.</DialogDescription>
         </DialogHeader>
-        <div className="rounded-md border">
+
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-40" aria-label="Start date" />
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-40" aria-label="End date" />
+            <Button variant="outline" size="sm" onClick={clearFilters}>Clear</Button>
+          </div>
+          <Input placeholder="Search transactions..." value={q} onChange={(e) => setQ(e.target.value)} className="w-full" />
+        </div>
+
+        <div className="rounded-md border mt-3 overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mock.map((r, i) => (
-                <TableRow key={i}>
-                  <TableCell>{r.date}</TableCell>
-                  <TableCell>{r.description}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(r.amount, account.currency)}</TableCell>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{formatDate(r.date)}</TableCell>
+                  <TableCell className="whitespace-normal break-words max-w-[12rem] sm:max-w-none">{r.description}</TableCell>
+                  <TableCell>
+                    <Badge variant={r.status === "POSTED" ? undefined : "outline"}>{r.status.toLowerCase()}</Badge>
+                  </TableCell>
+                  <TableCell className={"text-right " + (r.amount < 0 ? "text-red-600" : "text-green-600")}>{formatCurrency(r.amount, r.currency)}</TableCell>
                 </TableRow>
               ))}
+              {rows.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">No transactions</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center mt-2">
+          <div className="flex-1 text-center">
+            {hasMore ? (
+              <Button variant="outline" onClick={() => setPage((p) => p + 1)} disabled={loading}>{loading ? "Loading..." : "Load more"}</Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">{loading ? "Loading..." : rows.length ? "End of results" : ""}</span>
+            )}
+          </div>
+          <div className="text-sm self-end sm:self-auto">
+            <span className="text-muted-foreground mr-2">Total:</span>
+            <span className={(totalSum < 0 ? "text-red-600" : "text-green-600") + " font-medium"}>{formatCurrency(totalSum, account.currency)}</span>
+          </div>
+        </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
           <Button onClick={() => router.push(`/transactions?accountId=${account.id}`)}>Go to Transactions</Button>
@@ -212,6 +298,22 @@ function ViewTransactionsDialog({ open, setOpen, account }: { open: boolean; set
       </DialogContent>
     </Dialog>
   );
+}
+
+function formatDate(d: string) {
+  try {
+    return new Date(d).toISOString().slice(0, 10);
+  } catch {
+    return d;
+  }
+}
+
+function formatCurrency(n: number, currency: string) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n);
+  } catch {
+    return `${currency} ${n.toFixed(2)}`;
+  }
 }
 
 function DeleteAccountDialog({ open, setOpen, account, onDeleted }: { open: boolean; setOpen: (v: boolean) => void; account: Account; onDeleted: () => void }) {
@@ -245,12 +347,3 @@ function DeleteAccountDialog({ open, setOpen, account, onDeleted }: { open: bool
     </Dialog>
   );
 }
-
-function formatCurrency(n: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n);
-  } catch {
-    return `${currency} ${n.toFixed(2)}`;
-  }
-}
-
