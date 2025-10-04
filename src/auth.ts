@@ -8,7 +8,9 @@ import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" },
+  // Use JWT sessions so middleware can read the token and Credentials works
+  session: { strategy: "jwt" },
+  trustHost: true,
   providers: [
     Credentials({
       id: "password",
@@ -75,17 +77,24 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  pages: { signIn: "/auth/login" },
+  pages: { signIn: "/login" },
   callbacks: {
-    async session({ session, user }) {
-      if (session.user && user) {
-        (session.user as any).id = user.id as string;
-        session.user.name = user.name ?? undefined;
+    async jwt({ token, user }) {
+      if (user) {
+        // on initial sign-in
+        token.uid = (user as any).id;
+        token.name = user.name ?? token.name;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as any).id = (token.uid as string) || (token.sub as string);
       }
       return session;
     },
   },
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
 };
 
 // Helper for Server Components

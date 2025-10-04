@@ -1,8 +1,9 @@
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CashflowChart } from "@/components/charts/cashflow-chart";
+import { CategoryDonut } from "@/components/charts/category-donut";
 import { auth } from "@/auth";
-import { getDashboardKpis } from "@/lib/data/dashboard";
+import { getDashboardKpis, getCashflowSeries, getCategorySpendingCurrentMonth, getGoalsSummary, getDashboardAlerts, getMonthSummary } from "@/lib/data/dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertCircle, CreditCard } from "lucide-react";
@@ -10,7 +11,15 @@ import { AlertCircle, CreditCard } from "lucide-react";
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session?.user?.id ?? "demo";
-  const kpis = await getDashboardKpis(userId);
+  const [kpis, cashflow, catSpend, goals, alerts, thisMonth, prevMonth] = await Promise.all([
+    getDashboardKpis(userId),
+    getCashflowSeries(userId, 12),
+    getCategorySpendingCurrentMonth(userId),
+    getGoalsSummary(userId, 3),
+    getDashboardAlerts(userId),
+    getMonthSummary(userId, new Date()),
+    getMonthSummary(userId, new Date(new Date().setMonth(new Date().getMonth() - 1))),
+  ]);
   return (
     <div className="space-y-6">
       <div>
@@ -20,9 +29,19 @@ export default async function DashboardPage() {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         <KpiCard title="Total Balance" value={formatCurrency(kpis.totalBalance)} trend="12.5%" trendDir="up" />
-        <KpiCard title="Net Worth" value={formatCurrency(kpis.netWorth)} trend="8.2%" trendDir="up" />
-        <KpiCard title="Month Expense" value={formatCurrency(kpis.monthExpense)} trend="5.3%" trendDir="down" />
-        <KpiCard title="Month Income" value={formatCurrency(kpis.monthIncome)} trend="3.1%" trendDir="up" />
+        <KpiCard title="Net Worth" value={formatCurrency(kpis.netWorth)} />
+        <KpiCard
+          title="Month Expense"
+          value={formatCurrency(kpis.monthExpense)}
+          trend={pct(prevMonth.monthExpense, thisMonth.monthExpense)}
+          trendDir={thisMonth.monthExpense > prevMonth.monthExpense ? "down" : "up"}
+        />
+        <KpiCard
+          title="Month Income"
+          value={formatCurrency(kpis.monthIncome)}
+          trend={pct(prevMonth.monthIncome, thisMonth.monthIncome)}
+          trendDir={thisMonth.monthIncome >= prevMonth.monthIncome ? "up" : "down"}
+        />
         <KpiCard title="Delta" value={formatCurrency(kpis.delta)} />
       </section>
 
@@ -32,7 +51,7 @@ export default async function DashboardPage() {
             <CardTitle>12-Month Cashflow</CardTitle>
           </CardHeader>
           <CardContent>
-            <CashflowChart />
+            <CashflowChart data={cashflow} />
           </CardContent>
         </Card>
 
@@ -41,16 +60,20 @@ export default async function DashboardPage() {
             <CardTitle>Spending by Category</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex h-72 items-center justify-center">
-              <Skeleton className="h-56 w-56 rounded-full" />
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-              <LegendItem color="bg-emerald-500" label="Food" value={850} />
-              <LegendItem color="bg-blue-500" label="Transport" value={420} />
-              <LegendItem color="bg-amber-500" label="Shopping" value={650} />
-              <LegendItem color="bg-slate-400" label="Bills" value={1200} />
-              <LegendItem color="bg-slate-500" label="Other" value={325} />
-            </div>
+            {catSpend.length ? (
+              <CategoryDonut data={catSpend.map((c) => ({ name: c.name, value: c.amount, color: c.color }))} />
+            ) : (
+              <div className="flex h-72 items-center justify-center">
+                <Skeleton className="h-56 w-56 rounded-full" />
+              </div>
+            )}
+            {catSpend.length ? (
+              <div className="mt-2 grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                {catSpend.map((c, i) => (
+                  <LegendItem key={c.id} color={c.color} label={c.name} value={c.amount} index={i} />
+                ))}
+              </div>
+          ) : null}
           </CardContent>
         </Card>
       </section>
@@ -59,9 +82,15 @@ export default async function DashboardPage() {
         <h2 className="text-2xl font-semibold tracking-tight">Goals Progress</h2>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <GoalCard name="Emergency Fund" due="Dec 2024" saved={8500} total={10000} />
-          <GoalCard name="Vacation" due="Jun 2025" saved={2300} total={5000} />
-          <GoalCard name="New Car" due="Dec 2025" saved={12000} total={25000} />
+          {goals.map((g) => (
+            <GoalCard
+              key={g.id}
+              name={g.name}
+              due={g.due ? new Date(g.due).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : ""}
+              saved={g.saved}
+              total={g.total}
+            />
+          ))}
         </div>
       </section>
 
@@ -69,18 +98,19 @@ export default async function DashboardPage() {
         <h2 className="text-2xl font-semibold tracking-tight">Alerts & Notifications</h2>
         <Card>
           <CardContent className="space-y-3 pt-6">
-            <AlertRow
-              icon={<AlertCircle className="text-red-500" />}
-              title="Shopping budget exceeded"
-              description={`You've spent ${formatCurrency(1250)} of your ${formatCurrency(800)} budget`}
-              action={<Badge variant="destructive">Alert</Badge>}
-            />
-            <AlertRow
-              icon={<CreditCard className="text-amber-500" />}
-              title="Large transaction detected"
-              description={`${formatCurrency(2500)} payment to Best Electronics`}
-              action={<Badge variant="outline">Review</Badge>}
-            />
+            {alerts.length ? (
+              alerts.map((a) => (
+                <AlertRow
+                  key={a.id}
+                  icon={a.level === "alert" ? <AlertCircle className="text-red-500" /> : <CreditCard className="text-amber-500" />}
+                  title={a.title}
+                  description={a.description}
+                  action={<Badge variant={a.level === "alert" ? "destructive" : "outline"}>{a.level === "alert" ? "Alert" : "Review"}</Badge>}
+                />
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">No alerts for now.</div>
+            )}
           </CardContent>
         </Card>
       </section>
@@ -99,8 +129,7 @@ function KpiCard({ title, value, trend, trendDir }: { title: string; value: stri
         <div className="text-xs text-muted-foreground">USD</div>
         {trend ? (
           <div className={trendDir === "down" ? "text-xs text-red-600 dark:text-red-400" : "text-xs text-emerald-600 dark:text-emerald-400"}>
-            {trendDir === "down" ? "↓ " : "↑ "}
-            {trend}
+            {trendDir === "down" ? "↓" : "↑"} {trend}
           </div>
         ) : null}
       </CardContent>
@@ -116,11 +145,20 @@ function formatCurrency(n: number) {
   }
 }
 
-function LegendItem({ color, label, value }: { color: string; label: string; value: number }) {
+function pct(prev: number, curr: number) {
+  if (!prev) return "";
+  const change = ((curr - prev) / prev) * 100;
+  return `${Math.abs(change).toFixed(1)}%`;
+}
+
+function LegendItem({ color, label, value, index = 0 }: { color?: string; label: string; value: number; index?: number }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-2">
-        <span className={`inline-block size-2.5 rounded-sm ${color}`} />
+        <span
+          className="inline-block size-2.5 rounded-sm"
+          style={{ backgroundColor: color || ["var(--chart-1)", "var(--chart-3)", "var(--chart-4)", "var(--chart-2)", "var(--chart-5)"][index % 5] }}
+        />
         <span className="text-muted-foreground">{label}</span>
       </div>
       <span className="tabular-nums">{formatCurrency(value)}</span>

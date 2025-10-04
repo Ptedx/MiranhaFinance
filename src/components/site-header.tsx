@@ -17,7 +17,10 @@ export async function SiteHeader() {
           {session?.user ? (
             <SignOutButton />
           ) : (
-            <Link href="/auth/login" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Sign in</Link>
+            <>
+              <Link href="/auth/login" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Sign in</Link>
+              <Link href="/auth/register" className={cn(buttonVariants({ size: "sm" }))}>Register</Link>
+            </>
           )}
           <ThemeToggle />
         </div>

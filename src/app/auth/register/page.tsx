@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -56,9 +57,14 @@ export default function RegisterPage() {
             </div>
             <Button type="submit" disabled={loading} className="w-full">Create account</Button>
           </form>
+          <div className="mt-4 text-sm text-muted-foreground">
+            Already have an account? {" "}
+            <Link href="/auth/login" className="text-primary underline-offset-4 hover:underline">
+              Sign in
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
-
