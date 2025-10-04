@@ -49,15 +49,29 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight">Transactions</h1>
+        <p className="text-muted-foreground">View and manage your transactions</p>
+      </div>
+
       <Card>
-        <CardHeader>
-          <CardTitle>Transactions</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1">
+              <Input placeholder="Search transactions..." />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" asChild>
+                <label className="cursor-pointer">
+                  <input type="file" accept=".csv" onChange={onFile} className="hidden" />
+                  Import CSV
+                </label>
+              </Button>
+              <Button onClick={importCsv} disabled={!rows.length || busy}>Add Transaction</Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Input type="file" accept=".csv" onChange={onFile} />
-            <Button onClick={importCsv} disabled={!rows.length || busy}>Import CSV</Button>
-          </div>
           {rows.length > 0 ? (
             <div className="rounded-md border">
               <Table>
@@ -80,7 +94,7 @@ export default function TransactionsPage() {
               </Table>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Transactions table and import will go here.</p>
+            <p className="text-sm text-muted-foreground">Upload a CSV to preview transactions.</p>
           )}
         </CardContent>
       </Card>
