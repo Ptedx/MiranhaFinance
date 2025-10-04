@@ -1,75 +1,9 @@
-"use client";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { RegisterForm } from "./register-form";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
-import Link from "next/link";
-
-export default function RegisterPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const { status } = useSession();
-
-  useEffect(() => {
-    if (status === "authenticated") router.replace("/dashboard");
-  }, [status, router]);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
-    setLoading(false);
-    if (res.ok) {
-      toast.success("Account created");
-      const s = await signIn("password", { email, password, redirect: false });
-      if (s?.ok) router.replace("/dashboard");
-    } else {
-      const { error } = await res.json().catch(() => ({ error: "Registration failed" }));
-      toast.error(error || "Registration failed");
-    }
-  }
-
-  return (
-    <div className="mx-auto mt-10 max-w-md">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create account</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm text-muted-foreground">Name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground">Email</label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-            </div>
-            <div>
-              <label className="block text-sm text-muted-foreground">Password</label>
-              <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" minLength={6} required />
-            </div>
-            <Button type="submit" disabled={loading} className="w-full">Create account</Button>
-          </form>
-          <div className="mt-4 text-sm text-muted-foreground">
-            Already have an account? {" "}
-            <Link href="/auth/login" className="text-primary underline-offset-4 hover:underline">
-              Sign in
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+export default async function RegisterPage() {
+  const session = await auth();
+  if (session?.user) redirect("/dashboard");
+  return <RegisterForm />;
 }
