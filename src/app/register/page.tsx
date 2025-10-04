@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 
-export default function RegisterAlias() {
+export default async function RegisterAlias() {
+  const session = await auth();
+  if (session?.user) redirect("/dashboard");
   redirect("/auth/register");
 }
-

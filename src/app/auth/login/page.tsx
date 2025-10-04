@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 // import { startAuthentication } from "@simplewebauthn/browser";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,6 +17,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   // const params = useSearchParams();
+  const { status } = useSession();
+
+  useEffect(() => {
+    if (status === "authenticated") router.replace("/dashboard");
+  }, [status, router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
