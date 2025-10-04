@@ -1,26 +1,102 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
+/* Tailwind v4 inline theme mapping to CSS variables */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--text-secondary);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--text-primary);
+  --color-secondary: var(--muted);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--foreground);
+  --color-popover: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Light theme (Design System) */
+:root {
+  --radius: 1rem; /* 16px */
+  --bg: #F7F8FA;
+  --card: #FFFFFF;
+  --muted: #F1F3F5;
+  --border: #E6E8EC;
+  --text-primary: #0B1320;
+  --text-secondary: #475569;
+
+  /* Map to shadcn tokens */
+  --background: var(--bg);
+  --foreground: var(--text-primary);
+  --primary: #10B981; /* brand-500 */
+  --primary-foreground: #ffffff;
+  --accent: #2563EB;
+  --accent-foreground: #ffffff;
+  --destructive: #EF4444;
+  --input: var(--border);
+  --ring: var(--accent);
+  --popover: var(--card);
+  --popover-foreground: var(--text-primary);
+  --card-foreground: var(--text-primary);
+
+  /* Chart palette (light) */
+  --chart-1: #10B981; /* emerald-500 */
+  --chart-2: #34D399; /* emerald-400 */
+  --chart-3: #2563EB; /* accent */
+  --chart-4: #F59E0B; /* warning */
+  --chart-5: #EF4444; /* danger */
+}
+
+/* Dark theme (Design System) */
+.dark {
+  --bg: #0B0F16;
+  --card: #111827;
+  --muted: #151A22;
+  --border: #1F2937;
+  --text-primary: #E5E7EB;
+  --text-secondary: #9CA3AF;
+
+  --background: var(--bg);
+  --foreground: var(--text-primary);
+  --primary: #10B981; /* brand-500 */
+  --primary-foreground: #0B0F16;
+  --accent: #60A5FA;
+  --accent-foreground: #0B0F16;
+  --destructive: #F87171;
+  --input: var(--border);
+  --ring: var(--accent);
+  --popover: var(--card);
+  --popover-foreground: var(--text-primary);
+  --card-foreground: var(--text-primary);
+
+  /* Chart palette (dark) */
+  --chart-1: #34D399; /* emerald-400 */
+  --chart-2: #10B981; /* emerald-500 */
+  --chart-3: #60A5FA; /* accent */
+  --chart-4: #FBBF24; /* warning */
+  --chart-5: #F87171; /* danger */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
 }
