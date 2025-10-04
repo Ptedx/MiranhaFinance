@@ -31,8 +31,8 @@ export default function TransactionsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(""); // ISO yyyy-MM-dd for input[type=date]
+  const [dateTo, setDateTo] = useState(""); // ISO yyyy-MM-dd for input[type=date]
   const [totalSum, setTotalSum] = useState(0);
   const displayCurrency = useMemo(() => rows[0]?.currency || "USD", [rows]);
 
@@ -94,8 +94,8 @@ export default function TransactionsPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 flex flex-wrap items-center gap-2 sm:flex-nowrap">
               <Input placeholder="Search transactions..." value={q} onChange={onSearchChange} className="min-w-0 flex-1" />
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-40" aria-label="Start date" />
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-40" aria-label="End date" />
+              <Input type="date" lang="pt-BR" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-40" aria-label="Start date" />
+              <Input type="date" lang="pt-BR" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-40" aria-label="End date" />
               <Button variant="outline" size="sm" onClick={clearFilters} aria-label="Clear filters">Clear</Button>
             </div>
             <div className="flex items-center gap-2">
@@ -172,7 +172,10 @@ function fmt(n: number, currency: string) {
 function formatDate(d: string) {
   try {
     const dt = new Date(d);
-    return dt.toISOString().slice(0, 10);
+    const dd = String(dt.getDate()).padStart(2, "0");
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const yyyy = dt.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
   } catch {
     return d;
   }

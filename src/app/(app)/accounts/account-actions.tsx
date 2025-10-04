@@ -240,8 +240,8 @@ function ViewTransactionsDialog({ open, setOpen, account }: { open: boolean; set
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-40" aria-label="Start date" />
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-40" aria-label="End date" />
+          <Input type="date" lang="pt-BR" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-40" aria-label="Start date" />
+          <Input type="date" lang="pt-BR" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-40" aria-label="End date" />
             <Button variant="outline" size="sm" onClick={clearFilters}>Clear</Button>
           </div>
           <Input placeholder="Search transactions..." value={q} onChange={(e) => setQ(e.target.value)} className="w-full" />
@@ -302,7 +302,11 @@ function ViewTransactionsDialog({ open, setOpen, account }: { open: boolean; set
 
 function formatDate(d: string) {
   try {
-    return new Date(d).toISOString().slice(0, 10);
+    const dt = new Date(d);
+    const dd = String(dt.getDate()).padStart(2, "0");
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const yyyy = dt.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
   } catch {
     return d;
   }

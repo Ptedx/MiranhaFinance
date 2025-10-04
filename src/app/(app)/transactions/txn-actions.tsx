@@ -147,7 +147,7 @@ function EditTxnDialog({ open, setOpen, txn, onChanged }: { open: boolean; setOp
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="date">Date</label>
-              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} placeholder="dd/mm/yyyy" />
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -232,4 +232,3 @@ function DeleteTxnDialog({ open, setOpen, txn, onChanged }: { open: boolean; set
     </Dialog>
   );
 }
-

@@ -119,13 +119,13 @@ export function ImportStatementDialog({ onImported }: { onImported: () => void }
       <DialogTrigger asChild>
         <Button variant="outline">Import Statement</Button>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-3xl">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-3xl max-h-[90vh] overflow-hidden p-4 sm:p-6 flex flex-col">
         <DialogHeader>
           <DialogTitle>Import Statement</DialogTitle>
           <DialogDescription>Upload a CSV or PDF. Mapping is auto-detected; adjust only if needed.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-3 flex-1 overflow-hidden">
           <Input type="file" accept=".csv,.pdf" onChange={onFileChange} />
 
           {file && availableCols.length > 0 && (showAdvanced || preview.length === 0) && (
@@ -209,7 +209,7 @@ export function ImportStatementDialog({ onImported }: { onImported: () => void }
           )}
 
           {preview.length > 0 && (
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-md border overflow-auto max-h-[50vh] sm:max-h-[60vh]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -239,7 +239,7 @@ export function ImportStatementDialog({ onImported }: { onImported: () => void }
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="pt-3 mt-3 border-t">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
           <Button onClick={commitImport} disabled={!file || loading}>{loading ? "Importing..." : "Import"}</Button>
         </DialogFooter>
