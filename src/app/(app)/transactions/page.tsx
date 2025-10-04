@@ -1,50 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import Papa from "papaparse";
+import { Badge } from "@/components/ui/badge";
+import { AddTransactionButton } from "./add-transaction";
+import { TxnActions } from "./txn-actions";
 import { toast } from "sonner";
 
+type Row = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  currency: string;
+  status: "PENDING" | "POSTED";
+  account: { id: string; name: string };
+  category: { id: string; name: string } | null;
+};
+
 export default function TransactionsPage() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [cols, setCols] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
+  const sp = useSearchParams();
+  const router = useRouter();
+  const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    Papa.parse(file, {
-      header: true,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      complete: (res) => {
-        const data = (res.data as any[]).slice(0, 50);
-        setRows(data);
-        setCols(Object.keys(data[0] || {}));
-      },
-      error: () => toast.error("Failed to parse CSV"),
-    });
-  }
+  const accountId = sp.get("accountId") || undefined;
 
-  async function importCsv() {
+  const load = useCallback(async (reset = false) => {
     try {
-      setBusy(true);
-      const r = await fetch("/api/import/csv", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows }),
-      });
-      const json = await r.json();
-      if (!r.ok) throw new Error(json.error || "Import failed");
-      toast.success(`Imported ${json.count} rows (preview)`);
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.set("page", String(reset ? 1 : page));
+      params.set("pageSize", "20");
+      if (q) params.set("q", q);
+      if (accountId) params.set("accountId", accountId);
+      const res = await fetch(`/api/transactions?${params.toString()}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to load");
+      setRows((prev) => (reset ? json.data : [...prev, ...json.data]));
+      setHasMore(json.meta?.hasMore);
     } catch (e: any) {
-      toast.error(e.message || "Import error");
+      toast.error(e?.message || "Error loading transactions");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
+  }, [page, q, accountId]);
+
+  useEffect(() => {
+    setPage(1);
+    load(true);
+  }, [q, accountId]);
+
+  useEffect(() => {
+    if (page > 1) load(false);
+  }, [page]);
+
+  function onSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setQ(e.target.value);
   }
 
   return (
@@ -58,46 +77,83 @@ export default function TransactionsPage() {
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1">
-              <Input placeholder="Search transactions..." />
+              <Input placeholder="Search transactions..." value={q} onChange={onSearchChange} />
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild>
                 <label className="cursor-pointer">
-                  <input type="file" accept=".csv" onChange={onFile} className="hidden" />
+                  <input type="file" accept=".csv" className="hidden" />
                   Import CSV
                 </label>
               </Button>
-              <Button onClick={importCsv} disabled={!rows.length || busy}>Add Transaction</Button>
+              <AddTransactionButton accountId={accountId} onAdded={() => load(true)} />
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {rows.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {cols.map((c) => (
-                      <TableHead key={c}>{c}</TableHead>
-                    ))}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>{formatDate(r.date)}</TableCell>
+                    <TableCell>{r.description}</TableCell>
+                    <TableCell>{r.category ? <Badge variant="outline">{r.category.name}</Badge> : <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell>{r.account.name}</TableCell>
+                    <TableCell>
+                      <Badge variant={r.status === "POSTED" ? undefined : "outline"}>{r.status.toLowerCase()}</Badge>
+                    </TableCell>
+                    <TableCell className={"text-right " + (r.amount < 0 ? "text-red-600" : "text-green-600")}>{fmt(r.amount, r.currency)}</TableCell>
+                    <TableCell className="text-right">
+                      <TxnActions txn={r as any} onChanged={() => load(true)} />
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.slice(0, 10).map((r, i) => (
-                    <TableRow key={i}>
-                      {cols.map((c) => (
-                        <TableCell key={c}>{String(r[c] ?? "")}</TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Upload a CSV to preview transactions.</p>
-          )}
+                ))}
+                {rows.length === 0 && !loading && (
+                  <TableRow>
+                    <TableCell className="text-muted-foreground" colSpan={6}>No transactions found</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="flex items-center justify-center">
+            {hasMore ? (
+              <Button variant="outline" onClick={() => setPage((p) => p + 1)} disabled={loading}>{loading ? "Loading..." : "Load more"}</Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">{loading ? "Loading..." : rows.length ? "End of results" : ""}</span>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
   );
+}
+
+function fmt(n: number, currency: string) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n);
+  } catch {
+    return `${currency} ${n.toFixed(2)}`;
+  }
+}
+
+function formatDate(d: string) {
+  try {
+    const dt = new Date(d);
+    return dt.toISOString().slice(0, 10);
+  } catch {
+    return d;
+  }
 }
