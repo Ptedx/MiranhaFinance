@@ -11,8 +11,9 @@ const ListSchema = z.object({
   accountId: z.string().optional(),
   categoryId: z.string().optional(),
   status: z.enum(["PENDING", "POSTED"]).optional(),
-  dateFrom: z.string().datetime().optional(),
-  dateTo: z.string().datetime().optional(),
+  // Accept simple YYYY-MM-DD as well
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
 });
 
 const CreateSchema = z.object({
@@ -50,8 +51,9 @@ export async function GET(req: Request) {
       : {}),
   };
 
-  const [total, rows] = await Promise.all([
+  const [total, sumAgg, rows] = await Promise.all([
     prisma.transaction.count({ where }),
+    prisma.transaction.aggregate({ where, _sum: { amount: true } }),
     prisma.transaction.findMany({
       where,
       include: { account: { select: { name: true, currency: true } }, category: { select: { name: true } } },
@@ -72,7 +74,7 @@ export async function GET(req: Request) {
       account: { id: t.accountId, name: t.account.name },
       category: t.category ? { id: t.categoryId!, name: t.category.name } : null,
     })),
-    meta: { total, page, pageSize, hasMore: page * pageSize < total },
+    meta: { total, page, pageSize, hasMore: page * pageSize < total, totalSum: Number(sumAgg._sum.amount ?? 0) },
   });
 }
 

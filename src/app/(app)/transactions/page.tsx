@@ -30,6 +30,10 @@ export default function TransactionsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [totalSum, setTotalSum] = useState(0);
+  const displayCurrency = useMemo(() => rows[0]?.currency || "USD", [rows]);
 
   const accountId = sp.get("accountId") || undefined;
 
@@ -41,22 +45,25 @@ export default function TransactionsPage() {
       params.set("pageSize", "20");
       if (q) params.set("q", q);
       if (accountId) params.set("accountId", accountId);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
       const res = await fetch(`/api/transactions?${params.toString()}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load");
       setRows((prev) => (reset ? json.data : [...prev, ...json.data]));
       setHasMore(json.meta?.hasMore);
+      setTotalSum(json.meta?.totalSum ?? 0);
     } catch (e: any) {
       toast.error(e?.message || "Error loading transactions");
     } finally {
       setLoading(false);
     }
-  }, [page, q, accountId]);
+  }, [page, q, accountId, dateFrom, dateTo]);
 
   useEffect(() => {
     setPage(1);
     load(true);
-  }, [q, accountId]);
+  }, [q, accountId, dateFrom, dateTo]);
 
   useEffect(() => {
     if (page > 1) load(false);
@@ -64,6 +71,14 @@ export default function TransactionsPage() {
 
   function onSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     setQ(e.target.value);
+  }
+
+  function clearFilters() {
+    setQ("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+    // load(true) will be triggered by effects
   }
 
   return (
@@ -76,8 +91,11 @@ export default function TransactionsPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex-1">
-              <Input placeholder="Search transactions..." value={q} onChange={onSearchChange} />
+            <div className="flex-1 flex flex-wrap items-center gap-2 sm:flex-nowrap">
+              <Input placeholder="Search transactions..." value={q} onChange={onSearchChange} className="min-w-0 flex-1" />
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-40" aria-label="Start date" />
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-40" aria-label="End date" />
+              <Button variant="outline" size="sm" onClick={clearFilters} aria-label="Clear filters">Clear</Button>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild>
@@ -128,12 +146,18 @@ export default function TransactionsPage() {
               </TableBody>
             </Table>
           </div>
-          <div className="flex items-center justify-center">
-            {hasMore ? (
-              <Button variant="outline" onClick={() => setPage((p) => p + 1)} disabled={loading}>{loading ? "Loading..." : "Load more"}</Button>
-            ) : (
-              <span className="text-xs text-muted-foreground">{loading ? "Loading..." : rows.length ? "End of results" : ""}</span>
-            )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex-1 text-center">
+              {hasMore ? (
+                <Button variant="outline" onClick={() => setPage((p) => p + 1)} disabled={loading}>{loading ? "Loading..." : "Load more"}</Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">{loading ? "Loading..." : rows.length ? "End of results" : ""}</span>
+              )}
+            </div>
+            <div className="text-sm self-end sm:self-auto">
+              <span className="text-muted-foreground mr-2">Total:</span>
+              <span className={(totalSum < 0 ? "text-red-600" : "text-green-600") + " font-medium"}>{fmt(totalSum, displayCurrency)}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
